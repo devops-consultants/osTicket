@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/var/www/html
+      - ./setup-script.sh:/usr/local/bin/setup-script.sh
+      - ./start.sh:/usr/local/bin/start.sh
+      - ./nginx.conf:/etc/nginx/sites-available/default
+    ports:
+      - 8080:80
+    environment:
+      - PHP_MAX_EXECUTION_TIME=300
+      - PHP_MEMORY_LIMIT=256M
+      - PHP_UPLOAD_MAX_FILESIZE=64M
+      - PHP_POST_MAX_SIZE=64M
+      - MYSQL_HOST=db
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=osticket
+      - MYSQL_USER=osticket
+      - MYSQL_PASSWORD=osticket
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - osticket-network
+    command: >
+      bash -c "/usr/local/bin/setup-script.sh && /usr/local/bin/start.sh"
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    volumes:
+      - osticket-mysql-data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: osticket
+      MYSQL_USER: osticket
+      MYSQL_PASSWORD: osticket
+    ports:
+      - 3306:3306
+    networks:
+      - osticket-network
+    command: --default-authentication-plugin=mysql_native_password
+
+networks:
+  osticket-network:
+    driver: bridge
+
+volumes:
+  osticket-mysql-data:
