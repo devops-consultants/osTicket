@@ -1,23 +1,29 @@
 #!/bin/bash
 set -e
 
+export MYSQL_HOST=${MYSQL_HOST}
+export MYSQL_PORT=${MYSQL_PORT}
+export MYSQL_DATABASE=${MYSQL_DATABASE}
+export MYSQL_USER=${MYSQL_USER}
+export MYSQL_PASSWORD=${MYSQL_PASSWORD}
+
 # Wait for MySQL to be ready
-echo "Waiting for MySQL to be ready..."
-until mysql -h db -u osticket -posticket -e "SELECT 1" >/dev/null 2>&1; do
-  echo "MySQL is unavailable - sleeping"
+echo "Waiting for MySQL [${MYSQL_HOST}] to be ready..."
+until mysql -h ${MYSQL_HOST} -u ${MYSQL_USER} -p${MYSQL_PASSWORD} -e "SELECT 1" >/dev/null 2>&1; do
+  echo "MySQL [${MYSQL_HOST}] is unavailable - sleeping"
   sleep 2
 done
 echo "MySQL is up - continuing"
 
 # Check if osTicket is already installed
-DB_INITIALIZED=$(mysql -h db -u osticket -posticket -e "SHOW TABLES FROM osticket" 2>/dev/null | wc -l)
+DB_INITIALIZED=$(mysql -h ${MYSQL_HOST} -u ${MYSQL_USER} -p${MYSQL_PASSWORD} -e "SHOW TABLES FROM ${MYSQL_DATABASE}" 2>/dev/null | wc -l)
 CONFIG_EXISTS=$([ -f "/var/www/html/include/ost-config.php" ] && echo "yes" || echo "no")
 
 # Prepare setup directory if it doesn't exist
 if [ ! -d "/var/www/html/setup_hidden" ] && [ -d "/var/www/html/setup" ]; then
     echo "Creating setup_hidden directory"
     cp -r /var/www/html/setup /var/www/html/setup_hidden
-    chmod -R 755 /var/www/html/setup_hidden
+    # chmod -R 755 /var/www/html/setup_hidden
 fi
 
 # Use install.php script to initialize osTicket if needed
@@ -38,6 +44,11 @@ if [ "$DB_INITIALIZED" -le "1" ] || [ "$CONFIG_EXISTS" = "no" ]; then
     # Copy sample config for the installer to use
     cp /var/www/html/include/ost-sampleconfig.php /tmp/ost-config-temp.php
     chmod 0666 /tmp/ost-config-temp.php
+    
+    # Add SESSION_TTL constant with shorter expiration time (e.g., 1800 seconds = 30 minutes)
+    # This needs to match your OAuth2 provider's session timeout
+    # echo "# Adding custom SESSION_TTL setting to config" >> /tmp/ost-config-temp.php
+    # echo "define('SESSION_TTL', 1800);" >> /tmp/ost-config-temp.php
 
     # Set up environment variables for the installer
     export INSTALL_NAME="osTicket Support"
@@ -49,11 +60,11 @@ if [ "$DB_INITIALIZED" -le "1" ] || [ "$CONFIG_EXISTS" = "no" ]; then
     export ADMIN_USERNAME="ostadmin"
     export ADMIN_PASSWORD="Admin1"
     export MYSQL_PREFIX="ost_"
-    # export MYSQL_HOST="db"
-    # export MYSQL_PORT="3306"
-    # export MYSQL_DATABASE="osticket"
-    # export MYSQL_USER="osticket"
-    # export MYSQL_PASSWORD="osticket"
+    export MYSQL_HOST=${MYSQL_HOST}
+    export MYSQL_PORT=${MYSQL_PORT}
+    export MYSQL_DATABASE=${MYSQL_DATABASE}
+    export MYSQL_USER=${MYSQL_USER}
+    export MYSQL_PASSWORD=${MYSQL_PASSWORD}
     export INSTALL_CONFIG="/tmp/ost-config-temp.php"
     
     # Check if the install.php file exists in the correct location
@@ -83,15 +94,8 @@ else
     echo "osTicket is already installed."
 fi
 
-# Make sure setup is available for development
-if [ -d "/var/www/html/setup_hidden" ] && [ ! -d "/var/www/html/setup" ]; then
-    echo "Making setup directory available for development"
-    cp -r /var/www/html/setup_hidden /var/www/html/setup
-    chmod -R 755 /var/www/html/setup
-fi
-
 # Set proper permissions for development
-chmod -R 775 /var/www/html/include
+# chmod -R 775 /var/www/html/include
 
 # Set proper permission for attachments directory
 if [ ! -d "/var/www/html/uploads/tickets" ]; then
@@ -101,6 +105,6 @@ fi
 chmod -R 775 /var/www/html/uploads
 
 echo "osTicket development environment is ready!"
-echo "Admin login: admin / admin"
+echo "Admin login: ${ADMIN_USERNAME} / ${ADMIN_PASSWORD}"
 echo "Access the helpdesk at: http://localhost:8080"
 echo "Access the admin panel at: http://localhost:8080/scp"

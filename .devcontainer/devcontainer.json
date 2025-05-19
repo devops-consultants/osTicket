@@ -38,8 +38,6 @@
       }
     }
   },
-  "postCreateCommand": "sudo chmod +x /usr/local/bin/setup-script.sh",
-  "postStartCommand": "sudo /usr/local/bin/setup-script.sh",
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {}

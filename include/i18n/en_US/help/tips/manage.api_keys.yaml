@@ -28,5 +28,6 @@ api_key:
 ip_addr:
     title: IP Address
     content: >
-        Client's network IP address. Each unique client IP address will
-        require separate API keys
+        Client's network IP address. You can specify either a single IP address (e.g., 192.168.1.1) or
+        a CIDR notation to allow a range of IP addresses (e.g., 192.168.1.0/24 for a whole subnet).
+        Leave empty to allow access from any IP address.

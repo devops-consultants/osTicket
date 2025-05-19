@@ -98,19 +98,63 @@ class API {
     }
 
     static function validate($key, $ip) {
-        return ($key && $ip && self::getIdByKey($key, $ip));
+        if (!$key || !$ip)
+            return false;
+            
+        // Get the API key entry
+        $sql='SELECT id, ipaddr FROM '.API_KEY_TABLE.' WHERE apikey='.db_input($key);
+        if (!($res=db_query($sql)) || !db_num_rows($res))
+            return false;
+            
+        list($id, $stored_ip) = db_fetch_row($res);
+        
+        // No IP restriction if field is empty
+        if (!$stored_ip)
+            return $id;
+            
+        // Check if stored IP is CIDR notation
+        if (strpos($stored_ip, '/') !== false) {
+            if (Validator::check_ip($ip, $stored_ip))
+                return $id;
+        }
+        // Direct IP comparison
+        elseif ($stored_ip == $ip) {
+            return $id;
+        }
+        
+        return false;
     }
 
     static function getIdByKey($key, $ip='') {
-
-        $sql='SELECT id FROM '.API_KEY_TABLE.' WHERE apikey='.db_input($key);
-        if($ip)
-            $sql.=' AND ipaddr='.db_input($ip);
-
-        if(($res=db_query($sql)) && db_num_rows($res))
-            list($id) = db_fetch_row($res);
-
-        return $id;
+        // If no IP provided, just look up the key
+        if (!$ip) {
+            $sql='SELECT id FROM '.API_KEY_TABLE.' WHERE apikey='.db_input($key);
+            if(($res=db_query($sql)) && db_num_rows($res))
+                list($id) = db_fetch_row($res);
+            return $id;
+        }
+        
+        // We need to check IP constraints
+        $sql='SELECT id, ipaddr FROM '.API_KEY_TABLE.' WHERE apikey='.db_input($key);
+        if(($res=db_query($sql)) && db_num_rows($res)) {
+            list($id, $stored_ip) = db_fetch_row($res);
+            
+            // No IP restriction
+            if (!$stored_ip)
+                return $id;
+                
+            // Check if stored IP is CIDR notation
+            if (strpos($stored_ip, '/') !== false) {
+                if (Validator::check_ip($ip, $stored_ip))
+                    return $id;
+            }
+            // Direct IP comparison
+            elseif ($stored_ip == $ip) {
+                return $id;
+            }
+        }
+        
+        return null;
     }
 
     static function lookupByKey($key, $ip='') {
@@ -120,11 +164,36 @@ class API {
     static function lookup($id) {
         return ($id && is_numeric($id) && ($k= new API($id)) && $k->getId()==$id)?$k:null;
     }
+    
+    /**
+     * Determine if a given string is valid CIDR notation
+     * 
+     * @param string $cidr String to check
+     * @return bool True if the string is valid CIDR notation
+     */
+    static function is_valid_cidr($cidr) {
+        if (strpos($cidr, '/') === false)
+            return false;
+            
+        list($ip, $netmask) = explode('/', $cidr, 2);
+        
+        // Validate the IP part
+        if (!Validator::is_ip($ip))
+            return false;
+            
+        // Check if netmask is valid
+        if (!is_numeric($netmask) || 
+            (strpos($ip, ':') !== false && ($netmask < 1 || $netmask > 128)) || // IPv6
+            (strpos($ip, '.') !== false && ($netmask < 0 || $netmask > 32)))    // IPv4
+            return false;
+            
+        return true;
+    }
 
     static function save($id, $vars, &$errors) {
 
-        if(!$id && (!$vars['ipaddr'] || !Validator::is_ip($vars['ipaddr'])))
-            $errors['ipaddr'] = __('Valid IP is required');
+        if(!$id && (!$vars['ipaddr'] || (!Validator::is_ip($vars['ipaddr']) && !self::is_valid_cidr($vars['ipaddr']))))
+            $errors['ipaddr'] = __('Valid IP or CIDR notation required (e.g. 192.168.1.1 or 192.168.1.0/24)');
 
         if($errors) return false;
 
@@ -198,10 +267,29 @@ class ApiController extends Controller {
         // see getApiKey method.
         if (!($key=$this->getKey()))
             return $this->exerr(401, __('Valid API key required'));
-        elseif (!$key->isActive() || $key->getIPAddr() != $this->getRemoteAddr())
-            return $this->exerr(401, __('API key not found/active or source IP not authorized'));
-
-        return $key;
+        
+        if (!$key->isActive())
+            return $this->exerr(401, __('API key not found or not active'));
+            
+        // Check IP restrictions
+        $ipAddr = $key->getIPAddr();
+        $remoteAddr = $this->getRemoteAddr();
+        
+        // No IP restriction if field is empty
+        if (!$ipAddr) 
+            return $key;
+            
+        // Handle CIDR notation
+        if (strpos($ipAddr, '/') !== false) {
+            if (Validator::check_ip($remoteAddr, $ipAddr))
+                return $key;
+        }
+        // Direct IP comparison
+        elseif ($ipAddr == $remoteAddr) {
+            return $key;
+        }
+            
+        return $this->exerr(401, __('Source IP not authorized'));
     }
 
     function getKey() {
