@@ -1,7 +1,6 @@
-# filepath: /var/www/html/docker/docker-compose.yml
-
-# This docker-compose file mirrors the Kubernetes deployment structure
-# for local development and testing
+# filepath: /var/www/html/docker/docker-compose.multi-arch.yml
+# This docker-compose file is for testing multi-arch images
+version: "3.8"
 
 services:
   mysql:
@@ -17,8 +16,7 @@ services:
     ports:
       - "3306:3306"
     healthcheck:
-      test:
-        ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -29,17 +27,13 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
+          cpus: '0.5'
           memory: 512M
 
   php-fpm:
     container_name: osticket-php-fpm
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      target: production
-    ports:
-      - "9000:9000"
+    # Use the environment variable if set, otherwise use the default image
+    image: ${OSTICKET_IMAGE:-your-registry/osticket:latest}
     volumes:
       - plugins_data:/var/www/html/include/plugins
       - i18n_data:/var/www/html/include/i18n
@@ -67,15 +61,13 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
+          cpus: '0.5'
           memory: 256M
 
   nginx:
     container_name: osticket-nginx
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      target: nginx
+    # Use the environment variable if set, otherwise use the default image
+    image: ${OSTICKET_NGINX_IMAGE:-your-registry/osticket-nginx:latest}
     ports:
       - "8080:80"
     volumes:
@@ -84,14 +76,7 @@ services:
     depends_on:
       - php-fpm
     healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "-q",
-          "--spider",
-          "http://localhost/api/http.php/status",
-        ]
+      test: ["CMD", "wget", "-q", "--no-cache", "--spider", "http://localhost/api/http.php/status"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -102,7 +87,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.2"
+          cpus: '0.2'
           memory: 128M
 
 volumes:
@@ -110,7 +95,7 @@ volumes:
   plugins_data:
   i18n_data:
   nginx_logs:
-  shared_html: # shared volume between PHP-FPM and Nginx
+  shared_html:  # shared volume between PHP-FPM and Nginx
 
 networks:
   osticket-network:

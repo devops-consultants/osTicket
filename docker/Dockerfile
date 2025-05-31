@@ -1,9 +1,9 @@
-# Deployment doesn't work on Alpine
-FROM php:8.3-cli AS deployer
-# No need for OSTICKET_VERSION since we're using local files
 
-# Create directory for osTicket files
+# Stage 1: Deploy osTicket files
+FROM php:8.4-cli AS deployer
 WORKDIR /data
+
+RUN apt update && apt install -y git
 
 # Copy local osTicket files to the deployer container
 COPY . /tmp/osticket/
@@ -12,7 +12,7 @@ RUN set -x \
     # Deploy osTicket from local files
     && cd /tmp/osticket \
     && php manage.php deploy -sv /var/www/html \
-    # www-data is uid:gid 82:82 in php:7.0-fpm-alpine
+    # www-data is uid:gid 82:82 in php-fpm-alpine
     && chown -R 82:82 /var/www/html \
     # Hide setup
     && mv /var/www/html/setup /var/www/html/setup_hidden \
@@ -21,18 +21,23 @@ RUN set -x \
     # Clean up
     && rm -rf /tmp/osticket
 
-FROM php:8.3-fpm-alpine AS production
-LABEL maintainer="Rob Coward <rob@uptimelabs.io>"
+# Stage 2: Create production PHP-FPM container (without Nginx)
+FROM php:8.4-fpm-alpine AS production
+LABEL maintainer="Rob Coward <rob.coward@devops-consultants.co.uk>"
+
 # environment for osticket
-ENV HOME=/data \
-    PHP_MAX_EXECUTION_TIME=30 \
+ENV PHP_MAX_EXECUTION_TIME=30 \
     PHP_MEMORY_LIMIT=128M \
     PHP_UPLOAD_MAX_FILESIZE=32M \
     PHP_POST_MAX_SIZE=32M
 
 # setup workdir
-WORKDIR /data
+WORKDIR /var/www/html
+
+# Copy osTicket files from deployer
 COPY --from=deployer /var/www/html /var/www/html
+
+# Removed duplicate php-fpm-healthcheck block
 
 # Install production dependencies and PHP extensions
 RUN set -x && \
@@ -41,8 +46,6 @@ RUN set -x && \
         wget \
         msmtp \
         ca-certificates \
-        supervisor \
-        nginx \
         libpng \
         c-client \
         libintl \
@@ -82,38 +85,62 @@ RUN set -x && \
 
 # Download language packs and plugins
 RUN wget -nv -O /var/www/html/include/i18n/en_GB.phar https://s3.amazonaws.com/downloads.osticket.com/lang/1.18.x/en_GB.phar && \
-    wget -nv -O /var/www/html/include/plugins/auth-oauth2.phar https://s3.amazonaws.com/downloads.osticket.com/plugin/auth-oauth2.phar && \
-    # Configure logs and permissions
-    touch /var/log/msmtp.log && \
-    chown www-data:www-data /var/log/msmtp.log && \
-    # File upload permissions
-    mkdir -p /var/tmp/nginx && \
-    chown nginx:www-data /var/tmp/nginx && chmod g+rx /var/tmp/nginx && \
-    # Redirect Nginx logs to stdout and stderr
-    ln -sf /dev/stdout /var/log/nginx/access.log && \
-    ln -sf /dev/stderr /var/log/nginx/error.log
+    wget -nv -O /var/www/html/include/plugins/auth-oauth2.phar https://s3.amazonaws.com/downloads.osticket.com/plugin/auth-oauth2.phar 
+
 
 # Configure PHP
-COPY docker/files/usr/local/etc/php-fpm.d/www.conf /usr/local/etc/php-fpm.d/www.conf
-COPY docker/files/usr/local/etc/php/conf.d/custom.ini /usr/local/etc/php/conf.d/custom.ini
+# COPY docker/files/usr/local/etc/php-fpm.d/www.conf /usr/local/etc/php-fpm.d/www.conf
+# COPY docker/files/usr/local/etc/php/conf.d/php-osticket.ini /usr/local/etc/php/conf.d/php-osticket.ini
+COPY docker/files/data/bin /usr/local/bin
 
-# Process environment variables in the PHP config file
-RUN sed -i "s|\${PHP_MEMORY_LIMIT}|${PHP_MEMORY_LIMIT}|g" /usr/local/etc/php/conf.d/custom.ini && \
-    sed -i "s|\${PHP_UPLOAD_MAX_FILESIZE}|${PHP_UPLOAD_MAX_FILESIZE}|g" /usr/local/etc/php/conf.d/custom.ini && \
-    sed -i "s|\${PHP_POST_MAX_SIZE}|${PHP_POST_MAX_SIZE}|g" /usr/local/etc/php/conf.d/custom.ini && \
-    sed -i "s|\${PHP_MAX_EXECUTION_TIME}|${PHP_MAX_EXECUTION_TIME}|g" /usr/local/etc/php/conf.d/custom.ini
+# # Process environment variables in the PHP config file
+# RUN sed -i "s|\${PHP_MEMORY_LIMIT}|${PHP_MEMORY_LIMIT}|g" /usr/local/etc/php/conf.d/php-osticket.ini && \
+#     sed -i "s|\${PHP_UPLOAD_MAX_FILESIZE}|${PHP_UPLOAD_MAX_FILESIZE}|g" /usr/local/etc/php/conf.d/php-osticket.ini && \
+#     sed -i "s|\${PHP_POST_MAX_SIZE}|${PHP_POST_MAX_SIZE}|g" /usr/local/etc/php/conf.d/php-osticket.ini && \
+#     sed -i "s|\${PHP_MAX_EXECUTION_TIME}|${PHP_MAX_EXECUTION_TIME}|g" /usr/local/etc/php/conf.d/php-osticket.ini
+    # Optimize for production
+RUN echo "opcache.memory_consumption=128" >> /usr/local/etc/php/conf.d/opcache-recommended.ini && \
+    echo "opcache.interned_strings_buffer=8" >> /usr/local/etc/php/conf.d/opcache-recommended.ini && \
+    echo "opcache.max_accelerated_files=10000" >> /usr/local/etc/php/conf.d/opcache-recommended.ini && \
+    echo "opcache.revalidate_freq=60" >> /usr/local/etc/php/conf.d/opcache-recommended.ini && \
+    echo "opcache.fast_shutdown=1" >> /usr/local/etc/php/conf.d/opcache-recommended.ini && \
+    echo "opcache.enable_cli=0" >> /usr/local/etc/php/conf.d/opcache-recommended.ini && \
+    # Set proper permissions
+    chown -R www-data:www-data /var/www/html
 
-# Create non-root user for running the application
-RUN adduser -u 1000 -D -H -s /sbin/nologin osticket && \
-    chown -R osticket:www-data /var/www/html && \
-    chmod -R 775 /var/www/html/include
+# Run as non-root user
+# USER www-data
 
-# Add healthcheck
+# Add PHP-FPM healthcheck
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 || exit 1
+
+VOLUME ["/var/www/html/include/plugins","/var/www/html/include/i18n"]
+EXPOSE 9000
+
+CMD ["/usr/local/bin/start.sh"]
+
+# Stage 3: Create Nginx container (for local development)
+FROM nginx:alpine AS nginx
+LABEL maintainer="Rob Coward <rob@uptimelabs.io>"
+
+# Copy nginx config
+# COPY docker/files/etc/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY docker/files/etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf
+
+# Create volume for logs
+VOLUME ["/var/log/nginx"]
+
+# Run as non-root
+RUN touch /var/run/nginx.pid && \
+    chown -R nginx:nginx /var/cache/nginx /var/run/nginx.pid /var/log/nginx
+
+USER nginx
+
+# Add nginx healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD wget -q --no-cache --spider http://localhost/api/http.php/status || exit 1
 
-# Copy application files
-COPY docker/files/ /
-VOLUME ["/var/www/html/include/plugins","/var/www/html/include/i18n","/var/log/nginx"]
 EXPOSE 80
-CMD ["/data/bin/start.sh"]
+
+CMD ["nginx", "-g", "daemon off;"]
