@@ -3,10 +3,11 @@ name: OSTicket CI/CD Pipeline
 on:
   push:
     branches: 
-      - main
+      - develop
       - release/*
+      - feature/*
   pull_request:
-    branches: [ main ]
+    branches: [ develop ]
 
 env:
   REGISTRY: ghcr.io
