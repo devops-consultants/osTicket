@@ -1,0 +1,117 @@
+# filepath: /var/www/html/docker/docker-compose.yml
+
+# This docker-compose file mirrors the Kubernetes deployment structure
+# for local development and testing
+
+services:
+  mysql:
+    container_name: osticket-mysql
+    image: mysql:8.0
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: osticket
+      MYSQL_USER: osticket
+      MYSQL_PASSWORD: osticket
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test:
+        ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - osticket-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+  php-fpm:
+    container_name: osticket-php-fpm
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: production
+    ports:
+      - "9000:9000"
+    volumes:
+      - plugins_data:/var/www/html/include/plugins
+      - i18n_data:/var/www/html/include/i18n
+      - shared_html:/var/www/html
+    environment:
+      PHP_MAX_EXECUTION_TIME: 30
+      PHP_MEMORY_LIMIT: 128M
+      PHP_UPLOAD_MAX_FILESIZE: 32M
+      PHP_POST_MAX_SIZE: 32M
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: osticket
+      MYSQL_USER: osticket
+      MYSQL_PASSWORD: osticket
+    depends_on:
+      - mysql
+    healthcheck:
+      test: ["CMD", "php-fpm-healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - osticket-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  nginx:
+    container_name: osticket-nginx
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - nginx_logs:/var/log/nginx
+      - shared_html:/var/www/html:ro
+    depends_on:
+      - php-fpm
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "-q",
+          "--spider",
+          "http://localhost/api/http.php/status",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - osticket-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.2"
+          memory: 128M
+
+volumes:
+  mysql_data:
+  plugins_data:
+  i18n_data:
+  nginx_logs:
+  shared_html: # shared volume between PHP-FPM and Nginx
+
+networks:
+  osticket-network:
+    driver: bridge

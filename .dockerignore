@@ -1,0 +1,40 @@
+# Git-related
+.git
+.gitignore
+.github
+
+# Docker-related
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Node modules and package files if any exist
+node_modules
+package-lock.json
+yarn.lock
+
+# Editor and IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Temporary files and logs
+*.log
+logs
+tmp
+temp
+
+# Build artifacts
+*.tar.gz
+*.zip
+
+# Ignore uploads directory contents but keep the directory
+uploads/*
+!uploads/.gitkeep
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+kubernetes/*
