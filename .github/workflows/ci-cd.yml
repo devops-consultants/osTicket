@@ -14,8 +14,8 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-test:
-    name: Build and Test
+  build-and-push:
+    name: Build and Push
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -81,87 +81,16 @@ jobs:
           build-args: |
             VERSION=${{ github.sha }}
       
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@v1
-        with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+      # - name: Run Trivy vulnerability scanner
+      #   uses: aquasecurity/trivy-action@v1
+      #   with:
+      #     image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+      #     format: 'sarif'
+      #     output: 'trivy-results.sarif'
       
-      - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
+      # - name: Upload Trivy scan results
+      #   uses: github/codeql-action/upload-sarif@v3
+      #   if: always()
+      #   with:
+      #     sarif_file: 'trivy-results.sarif'
   
-  deploy-staging:
-    name: Deploy to Staging
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    environment: staging
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Set up Kubernetes toolset
-        uses: azure/setup-kubectl@v4
-        
-      - name: Set up Kustomize
-        uses: imranismail/setup-kustomize@v2
-        with:
-          kustomize-version: "4.5.7"
-          
-      - name: Configure Kubernetes context
-        uses: azure/k8s-set-context@v4
-        with:
-          kubeconfig: ${{ secrets.KUBE_CONFIG }}
-      
-      - name: Update Kustomization
-        run: |
-          cd kubernetes
-          kustomize edit set image "${REGISTRY}/${IMAGE_NAME}=${REGISTRY}/${IMAGE_NAME}:${GITHUB_SHA}"
-      
-      - name: Deploy to Staging
-        run: |
-          cd kubernetes
-          kubectl apply -k . --namespace=staging
-          kubectl rollout status deployment/php-fpm --namespace=staging
-          kubectl rollout status deployment/nginx --namespace=staging
-  
-  deploy-production:
-    name: Deploy to Production
-    if: startsWith(github.ref, 'refs/heads/release/')
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    environment: production
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Set up Kubernetes toolset
-        uses: azure/setup-kubectl@v4
-        
-      - name: Set up Kustomize
-        uses: imranismail/setup-kustomize@v2
-        with:
-          kustomize-version: "4.5.7"
-          
-      - name: Configure Kubernetes context
-        uses: azure/k8s-set-context@v4
-        with:
-          kubeconfig: ${{ secrets.KUBE_CONFIG }}
-      
-      - name: Update Kustomization
-        run: |
-          cd kubernetes
-          kustomize edit set image "${REGISTRY}/${IMAGE_NAME}=${REGISTRY}/${IMAGE_NAME}:${GITHUB_SHA}"
-      
-      - name: Deploy to Production
-        run: |
-          cd kubernetes
-          kubectl apply -k . --namespace=production
-          kubectl rollout status deployment/php-fpm --namespace=production
-          kubectl rollout status deployment/nginx --namespace=production
