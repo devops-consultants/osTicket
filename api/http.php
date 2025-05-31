@@ -18,6 +18,10 @@ require 'api.inc.php';
 require_once INCLUDE_DIR."class.dispatcher.php";
 $dispatcher = patterns('',
         url_post("^/tickets\.(?P<format>xml|json|email)$", array('api.tickets.php:TicketApiController','create')),
+        url_get("^/tickets\.(?P<format>xml|json)$", array('api.tickets.php:TicketApiController','getTickets')), 
+        url_get("^/tickets/(?P<id>\d+)\.(?P<format>xml|json)$", array('api.tickets.php:TicketApiController','getTicket')),
+        url_post("^/tickets/(?P<id>\d+)/add_thread\.(?P<format>xml|json)$", array('api.tickets.php:TicketApiController','addThread')),
+        url_get("^/tickets/number/(?P<number>[^/]+)\.(?P<format>xml|json)$", array('api.tickets.php:TicketApiController','getTicketByNumber')),
         url('^/tasks/', patterns('',
                 url_post("^cron$", array('api.cron.php:CronApiController', 'execute'))
          ))

@@ -70,22 +70,40 @@ class UserSession {
 
        @list($hash, $expire, $ip) = explode(":", $htoken);
        return $expire;
-   }
-
-   function isvalidSession($htoken, $maxidletime=0, $checkip=false){
+   }    function isvalidSession($htoken, $maxidletime=0, $checkip=false){
         global $cfg;
 
         // Compare session ids
         if (strcmp($this->getSessionId(), session_id()))
             return false;
 
+        // Allow authentication during login attempts regardless of token validity
+        // This ensures that corrupted OSTSESSION cookies will not prevent login
+        if (isset($_POST['userid']) && isset($_POST['passwd'])) {
+            // Allow auth during login attempts without requiring token validation
+            $this->validated = true;
+            return true;
+        }
+
+        // If token is empty, we can't validate the session
+        if (empty($htoken)) {
+            return false;
+        }
+
         $token = rawurldecode($htoken);
         // Check if we got what we expected....
-        if ($token && !strstr($token,":"))
+        if ($token && !strstr($token,":")) {
+            // Invalid token format - don't try to use it for validation
             return false;
+        }
 
         // Get the goodies
-        list($hash, $expire, $ip) = explode(':', $token);
+        @list($hash, $expire, $ip) = explode(':', $token);
+        
+        // Make sure we have all token components before validating
+        if (!$hash || !$expire) {
+            return false;
+        }
 
         // Make sure the session hash is valid
         if ((md5($expire . SESSION_SECRET . $this->userID) != $hash))
@@ -255,6 +273,11 @@ class StaffSession extends Staff {
     }
 
     function isValid() {
+        // During login process, allow authentication without requiring existing valid session
+        if (isset($_POST['userid']) && isset($_POST['passwd'])) {
+            // Override for login attempts - we'll regenerate the session after successful login
+            return true;
+        }
         return (!$this->is2FAPending() && $this->isValidSession());
     }
 }

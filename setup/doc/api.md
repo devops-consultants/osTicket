@@ -49,3 +49,4 @@ Resources
 
 - [Tickets](api/tickets.md)
 - [Tasks](api/tasks.md)
+- [Thread API](api-thread.md)

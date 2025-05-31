@@ -70,6 +70,13 @@ if ($_POST && isset($_POST['userid'])) {
     $username = trim($_POST['userid']);
     if ($user = StaffAuthenticationBackend::process($username,
             substr($_POST['passwd'], 0, 128), $errors)) {
+        // Force regenerate session ID on successful login
+        if ($user->isValid()) {
+            // Regenerate session ID to prevent session fixation attacks
+            $user->regenerateSession();
+            // Set session token after regenerating to ensure fresh state
+            $user->setSessionToken();
+        }
         $redirect($user->isValid() ? $dest : 'login.php');
     }
 

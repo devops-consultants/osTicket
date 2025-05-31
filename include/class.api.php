@@ -14,6 +14,7 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 include_once INCLUDE_DIR.'class.controller.php';
+include_once INCLUDE_DIR.'class.validator.php';
 
 class API {
 
@@ -76,6 +77,8 @@ class API {
     function canExecuteCron() {
         return ($this->ht['can_exec_cron']);
     }
+
+    // canCreateAgents method removed - functionality deprecated
 
     function update($vars, &$errors) {
 
@@ -172,22 +175,8 @@ class API {
      * @return bool True if the string is valid CIDR notation
      */
     static function is_valid_cidr($cidr) {
-        if (strpos($cidr, '/') === false)
-            return false;
-            
-        list($ip, $netmask) = explode('/', $cidr, 2);
-        
-        // Validate the IP part
-        if (!Validator::is_ip($ip))
-            return false;
-            
-        // Check if netmask is valid
-        if (!is_numeric($netmask) || 
-            (strpos($ip, ':') !== false && ($netmask < 1 || $netmask > 128)) || // IPv6
-            (strpos($ip, '.') !== false && ($netmask < 0 || $netmask > 32)))    // IPv4
-            return false;
-            
-        return true;
+        // Use the Validator class function instead
+        return Validator::is_valid_cidr($cidr);
     }
 
     static function save($id, $vars, &$errors) {
@@ -201,6 +190,7 @@ class API {
             .',isactive='.db_input($vars['isactive'])
             .',can_create_tickets='.db_input($vars['can_create_tickets'])
             .',can_exec_cron='.db_input($vars['can_exec_cron'])
+            // NOTE: can_create_agents field remains in DB but API for agent creation is removed entirely
             .',notes='.db_input(Format::sanitize($vars['notes']));
 
         if($id) {

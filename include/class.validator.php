@@ -141,9 +141,12 @@ class Validator {
                 break;
             case 'ipaddr':
                 if($values=explode(',', $this->input[$k])){
-                    foreach($values as $v)
-                        if(!preg_match_all('/^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$/', ltrim($v)))
+                    foreach($values as $v) {
+                        $v = ltrim($v);
+                        // Check for standard IP format or CIDR notation
+                        if(!self::is_ip($v) && !self::is_valid_cidr($v))
                             $this->errors[$k]=$field['error'];
+                    }
                 }
                 break;
             default://If param type is not set...or handle..error out...
@@ -341,6 +344,31 @@ class Validator {
             }
         }
 
+        return true;
+    }
+
+    /**
+     * Determine if a given string is valid CIDR notation
+     * 
+     * @param string $cidr String to check
+     * @return bool True if the string is valid CIDR notation
+     */
+    static function is_valid_cidr($cidr) {
+        if (strpos($cidr, '/') === false)
+            return false;
+            
+        list($ip, $netmask) = explode('/', $cidr, 2);
+        
+        // Validate the IP part
+        if (!self::is_ip($ip))
+            return false;
+            
+        // Check if netmask is valid
+        if (!is_numeric($netmask) || 
+            (strpos($ip, ':') !== false && ($netmask < 1 || $netmask > 128)) || // IPv6
+            (strpos($ip, '.') !== false && ($netmask < 0 || $netmask > 32)))    // IPv4
+            return false;
+            
         return true;
     }
 

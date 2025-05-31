@@ -40,5 +40,11 @@ abstract class Controller {
         exit();
     }
 
+    protected function jsonresponse($code, $response, $contentType='text/html') {
+        Http::response($code, $response, $contentType);
+        exit();
+    }
+
+
     abstract function onError($code, $error, $title=null, $logOnly=false);
 }
