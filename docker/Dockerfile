@@ -1,3 +1,48 @@
+# Create a PHP-FPM base container with pre-requisites for osTicket
+FROM php:8.4-fpm-alpine AS base
+
+RUN set -x && \
+    # Install runtime dependencies
+    apk add --no-cache \
+        wget \
+        msmtp \
+        ca-certificates \
+        libpng \
+        c-client \
+        libintl \
+        libxml2 \
+        icu \
+        openssl && \
+    # Install build dependencies
+    apk add --no-cache --virtual .build-deps \
+        linux-headers \
+        imap-dev \
+        libpng-dev \
+        oniguruma-dev \
+        curl-dev \
+        openldap-dev \
+        gettext-dev \
+        libxml2-dev \
+        icu-dev \
+        autoconf \
+        g++ \
+        make \
+        pcre-dev && \
+    # Install and configure PHP extensions
+    docker-php-ext-configure gd && \
+    docker-php-ext-install -j$(nproc) \
+        gd \
+        curl \
+        mysqli \
+        sockets \
+        gettext \
+        mbstring \
+        xml \
+        intl \
+        opcache && \
+    # Cleanup
+    apk del .build-deps && \
+    rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
 # Stage 1: Deploy osTicket files
 FROM php:8.4-cli AS deployer
@@ -122,7 +167,7 @@ CMD ["/usr/local/bin/start.sh"]
 
 # Stage 3: Create Nginx container (for local development)
 FROM nginx:alpine AS nginx
-LABEL maintainer="Rob Coward <rob@uptimelabs.io>"
+LABEL maintainer="Rob Coward <rob.coward@devops-consultants.co.uk>"
 
 # Copy nginx config
 # COPY docker/files/etc/nginx/nginx.conf /etc/nginx/nginx.conf
