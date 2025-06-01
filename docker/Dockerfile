@@ -67,7 +67,7 @@ RUN set -x \
     && rm -rf /tmp/osticket
 
 # Stage 2: Create production PHP-FPM container (without Nginx)
-FROM php:8.4-fpm-alpine AS production
+FROM quay.io/devops_consultants/php-fpm:latest AS production
 LABEL maintainer="Rob Coward <rob.coward@devops-consultants.co.uk>"
 
 # environment for osticket
@@ -81,52 +81,6 @@ WORKDIR /var/www/html
 
 # Copy osTicket files from deployer
 COPY --from=deployer /var/www/html /var/www/html
-
-# Removed duplicate php-fpm-healthcheck block
-
-# Install production dependencies and PHP extensions
-RUN set -x && \
-    # Install runtime dependencies
-    apk add --no-cache \
-        wget \
-        msmtp \
-        ca-certificates \
-        libpng \
-        c-client \
-        libintl \
-        libxml2 \
-        icu \
-        openssl && \
-    # Install build dependencies
-    apk add --no-cache --virtual .build-deps \
-        linux-headers \
-        imap-dev \
-        libpng-dev \
-        oniguruma-dev \
-        curl-dev \
-        openldap-dev \
-        gettext-dev \
-        libxml2-dev \
-        icu-dev \
-        autoconf \
-        g++ \
-        make \
-        pcre-dev && \
-    # Install and configure PHP extensions
-    docker-php-ext-configure gd && \
-    docker-php-ext-install -j$(nproc) \
-        gd \
-        curl \
-        mysqli \
-        sockets \
-        gettext \
-        mbstring \
-        xml \
-        intl \
-        opcache && \
-    # Cleanup
-    apk del .build-deps && \
-    rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
 # Download language packs and plugins
 RUN wget -nv -O /var/www/html/include/i18n/en_GB.phar https://s3.amazonaws.com/downloads.osticket.com/lang/1.18.x/en_GB.phar && \

@@ -2,54 +2,54 @@ name: OSTicket CI/CD Pipeline
 
 on:
   push:
-    branches: 
+    branches:
       - develop
       - release/*
       - feature/*
   pull_request:
-    branches: [ develop ]
+    branches: [develop]
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push:
-    name: Build and Push
+  build-and-push-fpm:
+    name: Build and Push FPM
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
+
       - name: Log in to Container registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-fpm
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,format=long
             type=ref,event=branch
-      
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
-          platforms: 'arm64,amd64'
+          platforms: "arm64,amd64"
 
       - name: Build and push PHP-FPM Docker image
         uses: docker/build-push-action@v5
@@ -66,6 +66,56 @@ jobs:
           build-args: |
             VERSION=${{ github.sha }}
 
+      # - name: Run Trivy vulnerability scanner
+      #   uses: aquasecurity/trivy-action@v1
+      #   with:
+      #     image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+      #     format: 'sarif'
+      #     output: 'trivy-results.sarif'
+
+      # - name: Upload Trivy scan results
+      #   uses: github/codeql-action/upload-sarif@v3
+      #   if: always()
+      #   with:
+      #     sarif_file: 'trivy-results.sarif'
+
+  build-and-push-nginx:
+    name: Build and Push Nginx
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-nginx
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=long
+            type=ref,event=branch
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: "arm64,amd64"
+
       - name: Build and push Nginx Docker image
         uses: docker/build-push-action@v5
         with:
@@ -80,17 +130,3 @@ jobs:
           cache-to: type=gha,scope=build-nginx,mode=max
           build-args: |
             VERSION=${{ github.sha }}
-      
-      # - name: Run Trivy vulnerability scanner
-      #   uses: aquasecurity/trivy-action@v1
-      #   with:
-      #     image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-      #     format: 'sarif'
-      #     output: 'trivy-results.sarif'
-      
-      # - name: Upload Trivy scan results
-      #   uses: github/codeql-action/upload-sarif@v3
-      #   if: always()
-      #   with:
-      #     sarif_file: 'trivy-results.sarif'
-  
