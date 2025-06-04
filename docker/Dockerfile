@@ -70,6 +70,9 @@ RUN set -x \
 FROM quay.io/devops_consultants/php-fpm:latest AS production
 LABEL maintainer="Rob Coward <rob.coward@devops-consultants.co.uk>"
 
+RUN apk add --no-cache sed grep fcgi && \
+    rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
+
 # environment for osticket
 ENV PHP_MAX_EXECUTION_TIME=30 \
     PHP_MEMORY_LIMIT=128M \
