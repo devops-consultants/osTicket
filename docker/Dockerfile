@@ -91,7 +91,8 @@ RUN wget -nv -O /var/www/html/include/i18n/en_GB.phar https://s3.amazonaws.com/d
 
 RUN wget -O /usr/local/bin/php-fpm-healthcheck \
     https://raw.githubusercontent.com/renatomefi/php-fpm-healthcheck/master/php-fpm-healthcheck \
-    && chmod +x /usr/local/bin/php-fpm-healthcheck
+    && chmod +x /usr/local/bin/php-fpm-healthcheck && \
+    echo "pm.status_path = /status" >> /usr/local/etc/php-fpm.d/zz-docker.conf 
 
 # Configure PHP
 # COPY docker/files/usr/local/etc/php-fpm.d/www.conf /usr/local/etc/php-fpm.d/www.conf
@@ -117,8 +118,8 @@ RUN echo "opcache.memory_consumption=128" >> /usr/local/etc/php/conf.d/opcache-r
 # USER www-data
 
 # Add PHP-FPM healthcheck
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-    CMD SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 || exit 1
+HEALTHCHECK --interval=5s --timeout=1s \
+    CMD php-fpm-healthcheck || exit 1
 
 VOLUME ["/var/www/html/include/plugins","/var/www/html/include/i18n"]
 EXPOSE 9000
