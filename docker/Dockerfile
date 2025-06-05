@@ -66,7 +66,14 @@ RUN set -x \
     # Clean up
     && rm -rf /tmp/osticket
 
-# Stage 2: Create production PHP-FPM container (without Nginx)
+# Stage 2: Build plugins
+FROM php:8.4-cli AS plugins
+COPY plugins /data/plugins
+WORKDIR /data/plugins
+RUN php -dphar.readonly=0 make.php build auth-passthru
+    
+
+# Stage 3: Create production PHP-FPM container (without Nginx)
 FROM quay.io/devops_consultants/php-fpm:latest AS production
 LABEL maintainer="Rob Coward <rob.coward@devops-consultants.co.uk>"
 
@@ -88,6 +95,8 @@ COPY --from=deployer /var/www/html /var/www/html
 # Download language packs and plugins
 RUN wget -nv -O /var/www/html/include/i18n/en_GB.phar https://s3.amazonaws.com/downloads.osticket.com/lang/1.18.x/en_GB.phar && \
     wget -nv -O /var/www/html/include/plugins/auth-oauth2.phar https://s3.amazonaws.com/downloads.osticket.com/plugin/auth-oauth2.phar 
+
+COPY --from=plugins /data/plugins/*.phar upload/include/plugins/
 
 RUN wget -O /usr/local/bin/php-fpm-healthcheck \
     https://raw.githubusercontent.com/renatomefi/php-fpm-healthcheck/master/php-fpm-healthcheck \
