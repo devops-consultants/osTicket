@@ -147,7 +147,7 @@ jobs:
         id: set-variables
         run: |
           echo "REPOSITORY=ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
-          echo "VERSION=$(yq -r .version ./kubernetes/charts/sosticket/Chart.yaml)" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$(yq -r .version ./kubernetes/charts/osticket/Chart.yaml)" >> "$GITHUB_OUTPUT"
 
       - name: Env variable output
         id: test-variables
@@ -165,7 +165,7 @@ jobs:
       - name: Package and push helm chart
         run: |
           helm package ./kubernetes/charts/osticket --version ${{ steps.set-variables.outputs.VERSION }}
-          helm push ./sample-app-chart-${{ steps.set-variables.outputs.VERSION }}.tgz oci://${{ steps.set-variables.outputs.REPOSITORY }}/charts
+          helm push ./osticket-${{ steps.set-variables.outputs.VERSION }}.tgz oci://${{ steps.set-variables.outputs.REPOSITORY }}/charts
 
   publish-helm-chart:
     name: Publish Helm Chart
@@ -188,6 +188,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           # linting: off
+          charts_dir: ./kubernetes/charts
           repository: helm-charts
           branch: gh-pages
           target_dir: charts
