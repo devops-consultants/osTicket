@@ -130,3 +130,64 @@ jobs:
           cache-to: type=gha,scope=build-nginx,mode=max
           build-args: |
             VERSION=${{ github.sha }}
+
+  package-helm-chart:
+    name: Package Helm Chart
+    runs-on: ubuntu-latest
+    needs: [build-and-push-fpm, build-and-push-nginx]
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set environment variables
+        id: set-variables
+        run: |
+          echo "REPOSITORY=ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$(yq -r .version ./kubernetes/charts/sosticket/Chart.yaml)" >> "$GITHUB_OUTPUT"
+
+      - name: Env variable output
+        id: test-variables
+        run: |
+          echo ${{ steps.set-variables.outputs.REPOSITORY }}
+          echo ${{ steps.set-variables.outputs.VERSION }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Package and push helm chart
+        run: |
+          helm package ./kubernetes/charts/osticket --version ${{ steps.set-variables.outputs.VERSION }}
+          helm push ./sample-app-chart-${{ steps.set-variables.outputs.VERSION }}.tgz oci://${{ steps.set-variables.outputs.REPOSITORY }}/charts
+
+  publish-helm-chart:
+    name: Publish Helm Chart
+    runs-on: ubuntu-latest
+    needs: [package-helm-chart]
+    permissions:
+      id-token: write
+      packages: write
+      contents: write
+      actions: read
+      deployments: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Publish Helm chart to GitHub Pages
+        uses: stefanprodan/helm-gh-pages@0ad2bb377311d61ac04ad9eb6f252fb68e207260 # v1.7.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # linting: off
+          repository: helm-charts
+          branch: gh-pages
+          target_dir: charts

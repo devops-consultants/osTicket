@@ -1,0 +1,174 @@
+# Default values for osticket.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/devops-consultants/osticket-fpm
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# The port that the PHP-FPM service listens on.
+fpmPort: 9000
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  {}
+  # fsGroup: 2000
+
+securityContext:  {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    # Uncomment the following line if you are using cert-manager for TLS
+    # cert-manager.io/cluster-issuer: letsencrypt-prod-dns
+    # IF using OAuth2 Proxy for authentication, with the auth-passthrough plugin
+    # then uncomment the following lines
+    # nginx.ingress.kubernetes.io/auth-response-headers: X-Auth-Request-User,X-Auth-Request-Email
+    # nginx.ingress.kubernetes.io/auth-signin: https://auth.example.com/oauth2/start
+    # nginx.ingress.kubernetes.io/auth-url: https://auth.example.com/oauth2/auth
+  hosts:
+    - host: tickets.example.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls:
+    - secretName: osticket-tls
+      hosts:
+        - tickets.example.com
+
+resources:  {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+livenessProbe:
+  # httpGet:
+  #   path: /
+  #   port: http
+    exec:
+      command:
+        - /usr/local/bin/php-fpm-healthcheck
+    initialDelaySeconds: 1
+    periodSeconds: 5
+readinessProbe:
+  # httpGet:
+  #   path: /
+  #   port: http
+    exec:
+      command:
+        - /usr/local/bin/php-fpm-healthcheck
+    initialDelaySeconds: 0
+    periodSeconds: 10
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Additional volumes on the output Deployment definition.
+volumes: 
+  - name: osticket-volume
+    emptyDir: {}
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: 
+  - name: osticket-volume
+    mountPath: /var/www/html
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+nginx:
+  image:
+    # repository: ghcr.io/devops-consultants/osticket-nginx
+    repository: nginx
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "1.28-alpine"
+
+  livenessProbe:
+    httpGet:
+      path: /
+      port: http
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+
+  resources:  {}
+
+  # Additional volumeMounts on the output Deployment definition.
+  volumeMounts: 
+    - name: osticket-volume
+      mountPath: /var/www/html
+    - name: nginx-config
+      mountPath: /etc/nginx/conf.d
+      readOnly: true
+
+
+mariadb:
+  internal: false
+  auth:
+    database: osticket
+    username: osticket
+    existingSecret: osticket-mariadb
+  primary:
+    persistence:
+      enabled: true
+      accessModes:
+        - ReadWriteOnce
+      size: 20Gi
+    resources:
+      requests:
+        memory: 700Mi
+        cpu: 100m
+    service:
+      type: ClusterIP
