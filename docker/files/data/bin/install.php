@@ -189,12 +189,12 @@ if (!$configFile = file_get_contents($vars['config'])) {
 };
 $configFile= str_replace("define('OSTINSTALLED',FALSE);","define('OSTINSTALLED',TRUE);",$configFile);
 $configFile= str_replace('%ADMIN-EMAIL%',$vars['admin_email'],$configFile);
-$configFile= str_replace('%CONFIG-DBHOST%',$vars['dbhost'] . ':' . $vars['dbport'],$configFile);
-$configFile= str_replace('%CONFIG-DBNAME%',$vars['dbname'],$configFile);
-$configFile= str_replace('%CONFIG-DBUSER%',$vars['dbuser'],$configFile);
-$configFile= str_replace('%CONFIG-DBPASS%',$vars['dbpass'],$configFile);
-$configFile= str_replace('%CONFIG-PREFIX%',$vars['prefix'],$configFile);
-$configFile= str_replace('%CONFIG-SIRI%',$vars['siri'],$configFile);
+$configFile= str_replace('%CONFIG-DBHOST',$vars['dbhost'] . ':' . $vars['dbport'],$configFile);
+$configFile= str_replace('%CONFIG-DBNAME',$vars['dbname'],$configFile);
+$configFile= str_replace('%CONFIG-DBUSER',$vars['dbuser'],$configFile);
+$configFile= str_replace('%CONFIG-DBPASS',$vars['dbpass'],$configFile);
+$configFile= str_replace('%CONFIG-PREFIX',$vars['prefix'],$configFile);
+$configFile= str_replace('%CONFIG-SIRI',$vars['siri'],$configFile);
 
 if (!file_put_contents($installer->getConfigFile(), $configFile)) {
    err("Failed to write configuration file");

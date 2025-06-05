@@ -22,3 +22,5 @@ include/mpdf/tmp
 nbproject/
 secret.txt
 setup_hidden/
+
+kubernetes/values-*.yaml
