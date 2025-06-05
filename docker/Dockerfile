@@ -96,7 +96,7 @@ COPY --from=deployer /var/www/html /var/www/html
 RUN wget -nv -O /var/www/html/include/i18n/en_GB.phar https://s3.amazonaws.com/downloads.osticket.com/lang/1.18.x/en_GB.phar && \
     wget -nv -O /var/www/html/include/plugins/auth-oauth2.phar https://s3.amazonaws.com/downloads.osticket.com/plugin/auth-oauth2.phar 
 
-COPY --from=plugins /data/plugins/*.phar upload/include/plugins/
+COPY --from=plugins /data/plugins/*.phar /var/www/html/include/plugins/
 
 RUN wget -O /usr/local/bin/php-fpm-healthcheck \
     https://raw.githubusercontent.com/renatomefi/php-fpm-healthcheck/master/php-fpm-healthcheck \
