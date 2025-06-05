@@ -127,21 +127,24 @@ EXPOSE 9000
 CMD ["/usr/local/bin/start.sh"]
 
 # Stage 3: Create Nginx container (for local development)
-FROM nginx:alpine AS nginx
+FROM nginx:1.28-alpine AS nginx
 LABEL maintainer="Rob Coward <rob.coward@devops-consultants.co.uk>"
 
 # Copy nginx config
 # COPY docker/files/etc/nginx/nginx.conf /etc/nginx/nginx.conf
 COPY docker/files/etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf
 
+# Copy osTicket files from deployer
+COPY --from=deployer /var/www/html /var/www/html
+
 # Create volume for logs
 VOLUME ["/var/log/nginx"]
 
 # Run as non-root
-RUN touch /var/run/nginx.pid && \
-    chown -R nginx:nginx /var/cache/nginx /var/run/nginx.pid /var/log/nginx
+# RUN touch /var/run/nginx.pid && \
+#     chown -R nginx:nginx /var/cache/nginx /var/run/nginx.pid /var/log/nginx
 
-USER nginx
+# USER nginx
 
 # Add nginx healthcheck
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
@@ -149,4 +152,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+# CMD ["nginx", "-g", "daemon off;"]
