@@ -188,7 +188,7 @@ if (!$configFile = file_get_contents($vars['config'])) {
   err("Failed to load configuration file: {$vars['config']}");
 };
 $configFile= str_replace("define('OSTINSTALLED',FALSE);","define('OSTINSTALLED',TRUE);",$configFile);
-$configFile= str_replace('%ADMIN-EMAIL%',$vars['admin_email'],$configFile);
+$configFile= str_replace('%ADMIN-EMAIL',$vars['admin_email'],$configFile);
 $configFile= str_replace('%CONFIG-DBHOST',$vars['dbhost'] . ':' . $vars['dbport'],$configFile);
 $configFile= str_replace('%CONFIG-DBNAME',$vars['dbname'],$configFile);
 $configFile= str_replace('%CONFIG-DBUSER',$vars['dbuser'],$configFile);
