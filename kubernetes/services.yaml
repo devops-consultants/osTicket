@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: php-fpm
+  namespace: osticket
+  labels:
+    app: php-fpm
+    part-of: osticket
+spec:
+  selector:
+    app: php-fpm
+  ports:
+  - port: 9000
+    targetPort: 9000
+  clusterIP: None  # Headless service for PHP-FPM
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: osticket
+  namespace: osticket
+  labels:
+    app: nginx
+    part-of: osticket
+spec:
+  selector:
+    app: nginx
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+  type: ClusterIP

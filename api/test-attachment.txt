@@ -1,0 +1,4 @@
+This is a sample attachment file for testing the osTicket API.
+Created for API testing purposes.
+
+This file demonstrates how to include attachments when adding threads to tickets.

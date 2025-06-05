@@ -1,0 +1,21 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: php-fpm-pdb
+  namespace: osticket
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: php-fpm
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: nginx-pdb
+  namespace: osticket
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: nginx

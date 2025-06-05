@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: osticket-env
+  namespace: osticket
+data:
+  PHP_MAX_EXECUTION_TIME: "30"
+  PHP_MEMORY_LIMIT: "128M"
+  PHP_UPLOAD_MAX_FILESIZE: "32M"
+  PHP_POST_MAX_SIZE: "32M"
+  MYSQL_HOST: "mysql"
+  MYSQL_DATABASE: "osticket"

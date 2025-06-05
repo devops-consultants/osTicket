@@ -1,0 +1,41 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: osticket
+
+resources:
+  - namespace.yaml
+  - php-configmap.yaml
+  - nginx-configmap.yaml
+  - osticket-env-configmap.yaml
+  - osticket-secrets.yaml
+  - persistent-volumes.yaml
+  - php-fpm-deployment.yaml
+  - nginx-deployment.yaml
+  - services.yaml
+  - ingress.yaml
+  - horizontal-pod-autoscaler.yaml
+  - mysql.yaml
+  - network-policy.yaml
+  - pod-disruption-budget.yaml
+  - resource-quota.yaml
+
+# Image repository and tag can be modified using kustomize
+images:
+- name: ${IMAGE_REPOSITORY}
+  newName: your-registry/osticket
+  newTag: latest
+
+# Note: Use the deploy.sh script to customize the image and other settings:
+# ./deploy.sh --repo your-registry/osticket --tag v1.0.0 --domain osticket.example.com
+
+# Configure resource constraints if needed
+patchesJson6902:
+- target:
+    version: v1
+    kind: ConfigMap
+    name: osticket-env
+  patch: |-
+    - op: replace
+      path: /data/PHP_MEMORY_LIMIT
+      value: 256M

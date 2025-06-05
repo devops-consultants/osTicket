@@ -1,0 +1,134 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: php-fpm
+  namespace: osticket
+  labels:
+    app: php-fpm
+    part-of: osticket
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: php-fpm
+  template:
+    metadata:
+      labels:
+        app: php-fpm
+        part-of: osticket
+    spec:
+      securityContext:
+        fsGroup: 82  # www-data group
+      containers:
+      - name: php-fpm
+        image: ${IMAGE_REPOSITORY}:${IMAGE_TAG}
+        imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 82  # www-data
+          capabilities:
+            drop:
+            - ALL
+        ports:
+        - containerPort: 9000
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+        env:
+        - name: PHP_MAX_EXECUTION_TIME
+          valueFrom:
+            configMapKeyRef:
+              name: osticket-env
+              key: PHP_MAX_EXECUTION_TIME
+        - name: PHP_MEMORY_LIMIT
+          valueFrom:
+            configMapKeyRef:
+              name: osticket-env
+              key: PHP_MEMORY_LIMIT
+        - name: PHP_UPLOAD_MAX_FILESIZE
+          valueFrom:
+            configMapKeyRef:
+              name: osticket-env
+              key: PHP_UPLOAD_MAX_FILESIZE
+        - name: PHP_POST_MAX_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: osticket-env
+              key: PHP_POST_MAX_SIZE
+        - name: MYSQL_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: osticket-env
+              key: MYSQL_HOST
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: osticket-env
+              key: MYSQL_DATABASE
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: osticket-secrets
+              key: MYSQL_USER
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: osticket-secrets
+              key: MYSQL_PASSWORD
+        volumeMounts:
+        - name: php-config
+          mountPath: /usr/local/etc/php/conf.d/custom.ini
+          subPath: php-custom.ini
+        - name: php-config
+          mountPath: /usr/local/etc/php-fpm.d/www.conf
+          subPath: www.conf
+        - name: shared-files
+          mountPath: /var/www/html
+        - name: plugins
+          mountPath: /var/www/html/include/plugins
+        - name: i18n
+          mountPath: /var/www/html/include/i18n
+        livenessProbe:
+          exec:
+            command:
+            - php-fpm-healthcheck
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - php-fpm-healthcheck
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+      volumes:
+      - name: php-config
+        configMap:
+          name: php-config
+      - name: shared-files
+        emptyDir: {}
+      - name: plugins
+        persistentVolumeClaim:
+          claimName: plugins-pvc
+      - name: i18n
+        persistentVolumeClaim:
+          claimName: i18n-pvc
+      initContainers:
+      - name: copy-osticket-files
+        image: ${IMAGE_REPOSITORY}:${IMAGE_TAG}
+        command: ['/bin/sh', '-c', 'cp -r /var/www/html/. /shared-html/ && chmod -R 775 /shared-html/']
+        volumeMounts:
+        - name: shared-files
+          mountPath: /shared-html

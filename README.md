@@ -19,6 +19,36 @@ osTicket is an attractive alternative to higher-cost and complex customer
 support systems; simple, lightweight, reliable, open source, web-based and
 easy to setup and use. The best part is, it's completely free.
 
+Deployment Options
+-----------------
+### Docker
+osTicket can be deployed using Docker. Check the `docker` directory for Dockerfile and related files.
+
+### Kubernetes
+For enterprise-grade deployments, osTicket can be deployed on Kubernetes. The `kubernetes` directory contains all necessary manifests following industry best practices:
+
+1. **Microservices Architecture**
+   - Separate deployments for PHP-FPM and Nginx
+   - Optimized resource configuration
+   - Horizontal Pod Autoscaler for automatic scaling
+
+2. **Security**
+   - Non-root containers with minimal permissions
+   - Network policies for traffic control
+   - Secure secrets management
+
+3. **High Availability**
+   - Pod Disruption Budgets for resilience
+   - Multi-replica deployments
+   - Proper health checks
+
+4. **Easy Deployment**
+   - Kustomize for environment-specific configuration
+   - Deployment scripts for easy setup
+   - CI/CD pipeline integration
+
+See the [Kubernetes Deployment Guide](kubernetes/README.md) for detailed instructions.
+
 Requirements
 ------------
   * HTTP server running Microsoft® IIS or Apache
