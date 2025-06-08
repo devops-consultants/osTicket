@@ -414,7 +414,7 @@ class TicketApiController extends ApiController {
     }
 
     /**
-     * Add a thread entry (reply or note) to a ticket
+     * Add a thread entry (reply, note, or email) to a ticket
      * 
      * This method allows adding a new thread entry to an existing ticket.
      * It supports:
@@ -428,9 +428,9 @@ class TicketApiController extends ApiController {
      * - Alerting participants
      * 
      * Request fields (Staff/API posting):
-     * - thread_type: 'note' for internal note, 'response' for public reply (required)
+     * - thread_type: 'note' for internal note, 'response' for public reply, 'email' for client email simulation (required)
      * - message: Content of the thread entry (required)
-     * - staffId: ID of staff member making the post (optional)
+     * - staffId: ID of staff member making the post (optional, not used for 'email' type)
      * - alert: Whether to alert participants (default: true)
      * - poster: Name of the poster (default: 'API')
      * - cannedId: ID of canned response to use (optional)
@@ -445,8 +445,7 @@ class TicketApiController extends ApiController {
      *   - data: File contents
      *   - encoding: 'base64' if encoded, otherwise raw data assumed
      *
-     * Request fields (Client/User reply simulation):
-     * - as_client: Set to true to simulate a client reply (required for user replies)
+     * Request fields (Email/Client reply simulation - when thread_type='email'):
      * - message: Content of the user reply (required)
      * - userId: ID of the user making the reply (default: ticket owner)
      * - attachments: Array of file attachments (optional, same format as above)
@@ -467,20 +466,21 @@ class TicketApiController extends ApiController {
         // Get request data
         $data = $this->getRequest($format);
         
-        // Check if this is a user/client reply simulation
-        $isClientReply = isset($data['as_client']) && $data['as_client'];
-        
-        if ($isClientReply) {
-            // Handle user reply simulation
-            return $this->addClientReply($ticket, $data, $format);
+        // Support legacy 'as_client' parameter for backward compatibility
+        if (isset($data['as_client']) && $data['as_client']) {
+            $data['thread_type'] = 'email';
         }
         
-        // Continue with staff/API post handling
-        
         // Validate required fields
-        if (!isset($data['thread_type']) || !in_array($data['thread_type'], ['note', 'response']))
-            return $this->exerr(400, __('Missing or invalid "thread_type" - must be "note" or "response"'));
+        if (!isset($data['thread_type']) || !in_array($data['thread_type'], ['note', 'response', 'email']))
+            return $this->exerr(400, __('Missing or invalid "thread_type" - must be "note", "response", or "email"'));
             
+        // Handle email thread type (client/user reply simulation)
+        if ($data['thread_type'] === 'email') {
+            return $this->handleEmailThreadType($ticket, $data, $format);
+        }
+        
+        // Continue with staff/API post handling for note and response types
         if (!isset($data['message']) && !isset($data['cannedId']))
             return $this->exerr(400, __('Either message or cannedId must be provided'));
             
@@ -642,7 +642,7 @@ class TicketApiController extends ApiController {
     }
     
     /**
-     * Handle client/user reply to a ticket
+     * Handle client/user reply to a ticket via email simulation
      * This simulates a user sending an email reply to a ticket
      * 
      * @param Ticket $ticket The target ticket
@@ -650,11 +650,11 @@ class TicketApiController extends ApiController {
      * @param string $format Response format (json or xml)
      * @return void
      */
-    private function addClientReply($ticket, $data, $format) {
+    private function handleEmailThreadType($ticket, $data, $format) {
         global $ost;
         
         if (!isset($data['message']) || !$data['message'])
-            return $this->exerr(400, __('Message is required for client reply'));
+            return $this->exerr(400, __('Message is required for email thread type'));
         
         // Get the user who is replying
         $user = null;
@@ -674,7 +674,7 @@ class TicketApiController extends ApiController {
         }
         
         if (!$user)
-            return $this->exerr(500, __('Unable to determine user for client reply'));
+            return $this->exerr(500, __('Unable to determine user for email thread type'));
         
         // Format data to mimic an email message
         $emailData = [
@@ -727,7 +727,7 @@ class TicketApiController extends ApiController {
             $result = $this->processEmail($emailData);
             
             if (!$result)
-                return $this->exerr(500, __('Failed to add client reply'));
+                return $this->exerr(500, __('Failed to add email reply'));
             
             // Get the thread entry that was just created
             $thread = $ticket->getThread();
@@ -748,7 +748,7 @@ class TicketApiController extends ApiController {
                 'ticket_id' => $ticket->getId(),
                 'ticket_number' => $ticket->getNumber(),
                 'thread_id' => $entry->getId(),
-                'thread_type' => 'message', // Client messages are of type 'message'
+                'thread_type' => 'email',
                 'message_id' => $entry->getEmailMessageId(),
                 'timestamp' => $entry->getCreateDate(),
                 'current_status' => [
@@ -783,7 +783,7 @@ class TicketApiController extends ApiController {
                 ], $format));
             }
         } catch (Exception $e) {
-            return $this->exerr(500, __('Failed to add client reply: ') . $e->getMessage());
+            return $this->exerr(500, __('Failed to add email reply: ') . $e->getMessage());
         }
     }
 

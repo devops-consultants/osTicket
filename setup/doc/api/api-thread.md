@@ -6,7 +6,11 @@ This document describes how to use the osTicket API to add new threads (replies 
 
 **Endpoint:** `POST /api/tickets/{id}/add_thread.json`
 
-This endpoint allows you to post new replies or internal notes to existing tickets.
+This endpoint allows you to post new replies, internal notes, or simulated client/user email replies to existing tickets. There are three types of thread entries you can create:
+
+1. **Internal Notes** (`thread_type=note`): Staff-only notes not visible to clients
+2. **Staff Responses** (`thread_type=response`): Public replies from staff members
+3. **Client/User Replies** (`thread_type=email`): Simulates an email reply from a client/user
 
 ### Authentication
 
@@ -27,17 +31,19 @@ The API accepts both JSON and XML formats. Make sure to set the appropriate Cont
 
 | Parameter | Type | Description | Required |
 |-----------|------|-------------|----------|
-| thread_type | string | Type of thread entry: 'note' for internal note, 'response' for public reply | Yes |
+| thread_type | string | Type of thread entry: 'note' for internal note, 'response' for public reply, 'email' for client/user reply simulation | Yes |
 | message | string | Content of the thread entry | Yes (unless using cannedId) |
-| staffId | integer | ID of staff member making the post | No |
+| staffId | integer | ID of staff member making the post (not used for 'email' type) | No |
 | alert | boolean | Whether to alert participants | No (default: true) |
-| poster | string | Name of the poster | No (default: 'API') |
-| cannedId | integer | ID of canned response to use | No |
+| poster | string | Name of the poster (default: 'API', not used for 'email' type) | No |
+| cannedId | integer | ID of canned response to use (not used for 'email' type) | No |
 | cannedMode | string | How to use canned response: 'prepend', 'append', 'replace' | No (default: 'replace') |
 | cannedAttachments | boolean | Whether to include canned response attachments | No (default: false) |
-| signature | string | Signature selection: 'none', 'mine', 'dept' | No (default: 'none') |
-| includeSignature | boolean | Whether to include signature | No (default: false) |
-| status_id | integer | ID of the status to set the ticket to | No |
+| signature | string | Signature selection: 'none', 'mine', 'dept' (not used for 'email' type) | No (default: 'none') |
+| includeSignature | boolean | Whether to include signature (not used for 'email' type) | No (default: false) |
+| status_id | integer | ID of the status to set the ticket to (not used for 'email' type) | No |
+| userId | integer | ID of the user making the reply (only for 'email' thread type) | No (default: ticket owner) |
+| as_client | boolean | Legacy parameter for backward compatibility (sets thread_type to 'email' when true) | No |
 | attachments | array | Array of file attachments | No |
 
 #### Attachment Format
@@ -127,11 +133,35 @@ Content-Type: application/json
 }
 ```
 
+#### Simulating a Client/User Reply (Email)
+
+The 'email' thread type simulates a user sending an email reply to the ticket. This is useful for integrations that need to add replies on behalf of clients or users. Unlike the 'note' and 'response' thread types which are posted by staff members, the 'email' thread type is associated with a user (either the ticket owner or a specified user).
+
+```json
+POST /api/tickets/123/add_thread.json
+X-API-Key: 184F66085DA76CDF5300FE2C6E229238
+Content-Type: application/json
+
+{
+  "thread_type": "email",
+  "message": "Thank you for your response. I have another question...",
+  "userId": 5,
+  "attachments": [
+    {
+      "name": "screenshot.png",
+      "type": "image/png",
+      "data": "iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAApgAAAKYB3X3/OAAAABl0RVh0U...",
+      "encoding": "base64"
+    }
+  ]
+}
+```
+
 ### Response
 
 Upon successful creation of a thread entry, the API will respond with a 201 Created status and a JSON or XML response containing details about the created thread.
 
-JSON Response Example:
+#### JSON Response Example for Staff Entry (note/response):
 ```json
 {
   "ticket_id": 123,
@@ -149,6 +179,34 @@ JSON Response Example:
     {
       "id": 789,
       "name": "document.pdf"
+    }
+  ]
+}
+```
+
+#### JSON Response Example for Client/User Reply (email):
+```json
+{
+  "ticket_id": 123,
+  "ticket_number": "ABC-123-4567",
+  "thread_id": 457,
+  "thread_type": "email",
+  "message_id": "<def456@osticket.com>",
+  "timestamp": "2023-05-24 11:15:00",
+  "current_status": {
+    "id": 1,
+    "name": "Open",
+    "state": "open"
+  },
+  "user": {
+    "id": 5,
+    "name": "John Doe",
+    "email": "johndoe@example.com"
+  },
+  "attachments": [
+    {
+      "id": 790,
+      "name": "screenshot.png"
     }
   ]
 }

@@ -1,9 +1,7 @@
 Tickets
 =======
-The API supports ticket creation via the HTTP API (as well as via email,
-etc.). Currently, the API support creation of tickets only -- so no
-modifications and deletions of existing tickets is possible via the API for
-now.
+The API supports ticket operations via HTTP APIs including creating tickets, retrieving ticket lists, 
+getting ticket details by ID or ticket number, and adding thread entries to existing tickets.
 
 Create a Ticket
 ---------------
@@ -226,3 +224,233 @@ the newly-created ticket.
 
     Status: 201 Created
     123456
+
+Get Ticket List
+--------------
+
+Get a paginated list of tickets with basic ticket information.
+
+### Endpoint
+
+`GET /api/tickets.json` or `GET /api/tickets.xml`
+
+### Authentication
+
+Authentication is done via API keys. Include the API key in the `X-API-Key` HTTP header.
+
+Example:
+```
+X-API-Key: 184F66085DA76CDF5300FE2C6E229238
+```
+
+### Parameters
+
+| Parameter | Type   | Description                                | 
+|-----------|--------|--------------------------------------------|
+| page      | int    | Page number for pagination (default: 1)    |
+| limit     | int    | Results per page (default: 25, max: 100)   |
+| status    | string | Filter by status: 'open', 'closed', or 'archived' |
+
+### Response
+
+The response includes a list of tickets and pagination metadata.
+
+```json
+{
+  "tickets": [
+    {
+      "id": 123,
+      "number": "ABC-123-4567",
+      "subject": "Issue with product",
+      "status": "Open",
+      "created": "2025-05-24 12:34:56",
+      "updated": "2025-05-24 14:22:33"
+    },
+    {
+      "id": 124,
+      "number": "ABC-123-4568",
+      "subject": "Another issue",
+      "status": "Closed",
+      "created": "2025-05-23 10:11:12",
+      "updated": "2025-05-23 15:16:17"
+    }
+  ],
+  "pagination": {
+    "total": 243,
+    "page": 1,
+    "limit": 25,
+    "pages": 10
+  }
+}
+```
+
+Get Ticket by ID
+---------------
+
+Retrieve detailed information about a specific ticket by its internal ID.
+
+### Endpoint
+
+`GET /api/tickets/{id}.json` or `GET /api/tickets/{id}.xml`
+
+### Authentication
+
+Authentication is done via API keys. Include the API key in the `X-API-Key` HTTP header.
+
+### Parameters
+
+| Parameter | Type | Description                         |
+|-----------|------|-------------------------------------|
+| id        | int  | The internal ticket ID (required)   |
+
+### Response
+
+The response includes comprehensive ticket information including thread entries.
+
+```json
+{
+  "id": 123,
+  "number": "ABC-123-4567",
+  "subject": "Issue with product",
+  "status": "Open",
+  "priority": "Normal",
+  "department": "Support",
+  "created": "2025-05-24 12:34:56",
+  "updated": "2025-05-24 14:22:33",
+  "assigned_to": {
+    "id": 5,
+    "name": "John Support"
+  },
+  "client": {
+    "name": "Jane Smith",
+    "email": "jane@example.com"
+  },
+  "thread": [
+    {
+      "id": 567,
+      "type": "message",
+      "body": "I'm having an issue with my account",
+      "created": "2025-05-24 12:34:56",
+      "staff": null
+    },
+    {
+      "id": 568,
+      "type": "response",
+      "body": "Thank you for reporting this issue. We'll investigate.",
+      "created": "2025-05-24 13:22:44",
+      "staff": {
+        "id": 5,
+        "name": "John Support"
+      }
+    }
+  ]
+}
+```
+
+Get Ticket by Number
+------------------
+
+Retrieve detailed information about a specific ticket by its ticket number.
+
+### Endpoint
+
+`GET /api/tickets/number/{ticketNumber}.json` or `GET /api/tickets/number/{ticketNumber}.xml`
+
+### Authentication
+
+Authentication is done via API keys. Include the API key in the `X-API-Key` HTTP header.
+
+### Parameters
+
+| Parameter     | Description                                                 |
+|---------------|-------------------------------------------------------------|
+| ticketNumber  | The ticket number to look up (case-sensitive)               |
+
+### Response
+
+```json
+{
+  "id": 123,
+  "number": "ABC123",
+  "subject": "Issue with product",
+  "status": "Open",
+  "priority": "Normal",
+  "department": "Support",
+  "created": "2025-05-24 12:34:56",
+  "updated": "2025-05-24 14:22:33",
+  "assigned_to": {
+    "id": 5,
+    "name": "John Support"
+  },
+  "client": {
+    "id": 42,
+    "name": "Jane Smith",
+    "email": "jane@example.com"
+  },
+  "thread": [
+    {
+      "id": 567,
+      "type": "message",
+      "created": "2025-05-24 12:34:56",
+      "body": "I'm having an issue with my account",
+      "user": {
+        "id": 42,
+        "name": "Jane Smith"
+      },
+      "attachments": [
+        {
+          "id": 321,
+          "name": "screenshot.png",
+          "size": 42356,
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "id": 568,
+      "type": "response",
+      "created": "2025-05-24 13:22:44",
+      "body": "Thank you for reporting this issue. We'll investigate.",
+      "staff": {
+        "id": 5,
+        "name": "John Support"
+      }
+    }
+  ]
+}
+```
+
+### Example Usage
+
+#### cURL Example
+
+```bash
+curl -X GET \
+  'http://your-osticket-install.com/api/tickets/number/ABC123.json' \
+  -H 'X-API-Key: YOUR_API_KEY' \
+  -H 'Accept: application/json'
+```
+
+### Error Responses
+
+| Status Code | Description                                |
+|-------------|--------------------------------------------|
+| 401         | API key not authorized                     |
+| 404         | Unknown ticket (ticket number not found)   |
+| 500         | Server error processing the request        |
+
+### Notes
+
+- Ticket numbers in osTicket are case-sensitive, so ensure you're using the exact format (typically uppercase letters and numbers)
+- The API returns the full ticket thread history by default
+
+Add Thread Entry to Ticket
+-------------------------
+
+You can add notes, replies, or client email simulations to an existing ticket.
+
+### Endpoint
+
+`POST /api/tickets/{id}/add_thread.json` or `POST /api/tickets/{id}/add_thread.xml`
+
+For detailed documentation on adding thread entries to tickets, please refer to [Thread API Documentation](api-thread.md).
