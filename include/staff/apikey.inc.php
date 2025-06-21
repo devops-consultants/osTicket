@@ -89,7 +89,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info, true);
             <td colspan=2 style="padding-left:5px">
                 <label>
                     <input type="checkbox" name="can_create_tickets" value="1" <?php echo $info['can_create_tickets']?'checked="checked"':''; ?> >
-                    <?php echo __('Can Create Tickets <em>(XML/JSON/EMAIL)</em>');?>
+                    <?php echo __('Can Manage Tickets <em>(Create, Lookup, Add Threads - XML/JSON/EMAIL)</em>');?>
                 </label>
             </td>
         </tr>
@@ -98,6 +98,14 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info, true);
                 <label>
                     <input type="checkbox" name="can_exec_cron" value="1" <?php echo $info['can_exec_cron']?'checked="checked"':''; ?> >
                     <?php echo __('Can Execute Cron');?>
+                </label>
+            </td>
+        </tr>
+        <tr>
+            <td colspan=2 style="padding-left:5px">
+                <label>
+                    <input type="checkbox" name="can_create_agents" value="1" <?php echo $info['can_create_agents']?'checked="checked"':''; ?> >
+                    <?php echo __('Can Create/Manage Agents <em>(Staff Management)</em>');?>
                 </label>
             </td>
         </tr>

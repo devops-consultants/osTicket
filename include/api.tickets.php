@@ -211,8 +211,10 @@ class TicketApiController extends ApiController {
             $response = json_encode($response);
             $this->jsonresponse(200, $response, 'application/json');
         } elseif ($format == 'xml') {
-            // Convert to XML format (not implemented in this example)
-            // You can use a library or custom function to convert to XML
+            // Convert to XML format
+            $xml = new SimpleXMLElement('<tickets/>');
+            $this->array2XML($xml, $response);
+            Http::response(200, $xml->asXML(), 'application/xml');
         } else {
             $this->response(200, $response, 'application/json');
         }
@@ -273,8 +275,10 @@ class TicketApiController extends ApiController {
             $response = json_encode($result);
             $this->jsonresponse(200, $response, 'application/json');
         } elseif ($format == 'xml') {
-            // Convert to XML format (not implemented in this example)
-            // You can use a library or custom function to convert to XML
+            // Convert to XML format
+            $xml = new SimpleXMLElement('<ticket/>');
+            $this->array2XML($xml, $result);
+            Http::response(200, $xml->asXML(), 'application/xml');
         } else {
             $this->response(200, $result, 'application/json');
         }
@@ -634,10 +638,13 @@ class TicketApiController extends ApiController {
         
         if ($format === 'json') {
             $this->response(201, JsonDataEncoder::encode($response));
+        } elseif ($format === 'xml') {
+            // Convert to XML format
+            $xml = new SimpleXMLElement('<thread/>');
+            $this->array2XML($xml, $response);
+            $this->response(201, $xml->asXML());
         } else {
-            $this->response(201, Format::xml([
-                'thread' => $response
-            ], $format));
+            $this->response(201, JsonDataEncoder::encode($response));
         }
     }
     
@@ -777,10 +784,13 @@ class TicketApiController extends ApiController {
             
             if ($format === 'json') {
                 $this->response(201, JsonDataEncoder::encode($response));
+            } elseif ($format === 'xml') {
+                // Convert to XML format
+                $xml = new SimpleXMLElement('<thread/>');
+                $this->array2XML($xml, $response);
+                $this->response(201, $xml->asXML());
             } else {
-                $this->response(201, Format::xml([
-                    'thread' => $response
-                ], $format));
+                $this->response(201, JsonDataEncoder::encode($response));
             }
         } catch (Exception $e) {
             return $this->exerr(500, __('Failed to add email reply: ') . $e->getMessage());

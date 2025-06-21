@@ -78,7 +78,9 @@ class API {
         return ($this->ht['can_exec_cron']);
     }
 
-    // canCreateAgents method removed - functionality deprecated
+    function canCreateAgents() {
+        return ($this->ht['can_create_agents']);
+    }
 
     function update($vars, &$errors) {
 
@@ -190,7 +192,7 @@ class API {
             .',isactive='.db_input($vars['isactive'])
             .',can_create_tickets='.db_input($vars['can_create_tickets'])
             .',can_exec_cron='.db_input($vars['can_exec_cron'])
-            // NOTE: can_create_agents field remains in DB but API for agent creation is removed entirely
+            .',can_create_agents='.db_input($vars['can_create_agents'])
             .',notes='.db_input(Format::sanitize($vars['notes']));
 
         if($id) {

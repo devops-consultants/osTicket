@@ -22,6 +22,11 @@ $dispatcher = patterns('',
         url_get("^/tickets/(?P<id>\d+)\.(?P<format>xml|json)$", array('api.tickets.php:TicketApiController','getTicket')),
         url_post("^/tickets/(?P<id>\d+)/add_thread\.(?P<format>xml|json)$", array('api.tickets.php:TicketApiController','addThread')),
         url_get("^/tickets/number/(?P<number>[^/]+)\.(?P<format>xml|json)$", array('api.tickets.php:TicketApiController','getTicketByNumber')),
+        url_get("^/staff\.(?P<format>xml|json)$", array('api.staff.php:StaffApiController','getStaff')),
+        url_get("^/staff/email/(?P<email>[^/]+)\.(?P<format>xml|json)$", array('api.staff.php:StaffApiController','getStaffByEmail')),
+        url_get("^/staff/(?P<id>\d+)\.(?P<format>xml|json)$", array('api.staff.php:StaffApiController','getStaffById')),
+        url_post("^/staff\.(?P<format>xml|json)$", array('api.staff.php:StaffApiController','create')),
+        url_post("^/staff/(?P<id>\d+)\.(?P<format>xml|json)$", array('api.staff.php:StaffApiController','updateStaff')),
         url('^/tasks/', patterns('',
                 url_post("^cron$", array('api.cron.php:CronApiController', 'execute'))
          ))

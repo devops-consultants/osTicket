@@ -453,4 +453,4 @@ You can add notes, replies, or client email simulations to an existing ticket.
 
 `POST /api/tickets/{id}/add_thread.json` or `POST /api/tickets/{id}/add_thread.xml`
 
-For detailed documentation on adding thread entries to tickets, please refer to [Thread API Documentation](api-thread.md).
+For detailed documentation on adding thread entries to tickets, please refer to [Thread API Documentation](ticket-threads.md).

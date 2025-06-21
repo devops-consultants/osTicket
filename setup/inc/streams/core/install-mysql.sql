@@ -7,6 +7,7 @@ CREATE TABLE `%TABLE_PREFIX%api_key` (
   `apikey` varchar(255) NOT NULL,
   `can_create_tickets` TINYINT( 1 ) UNSIGNED NOT NULL DEFAULT  '1',
   `can_exec_cron` TINYINT( 1 ) UNSIGNED NOT NULL DEFAULT  '1',
+  `can_create_agents` TINYINT( 1 ) UNSIGNED NOT NULL DEFAULT  '0',
   `notes` text,
   `updated` datetime NOT NULL,
   `created` datetime NOT NULL,

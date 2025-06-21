@@ -1,8 +1,10 @@
-API_KEY:= ACBCA7F760A71D4D28B64E4B1CDC820C
+API_KEY:= 07BEAF272D79C4FA0250E1C853C304FB
 PORT:= 8080
 DEBUG:= 0
 XDEBUG_HEADER:= $(if $(DEBUG),-H "Cookie: XDEBUG_SESSION=PHPSTORM",)
 HOST ?= http://localhost:8080
+EMAIL ?= admin@example.com
+STAFFID ?= 1
 
 ticket:
 	curl -v -H "X-API-Key: $(API_KEY)" -X POST \
@@ -33,7 +35,7 @@ add-reply:
 	"${HOST}/api/tickets.json" | jq -r '.tickets[0].id'); \
 	echo "Last ticket ID: $${LAST_ID}"; \
 	curl -v -H "X-API-Key: $(API_KEY)" $(XDEBUG_HEADER) -X POST \
-	-d '{"thread_type": "response", "message": "This is an reply to the user", "staffId": 1, "alert": false}' \
+	-d '{"thread_type": "response", "message": "This is a reply sent to the user", "staffId": 1, "alert": false}' \
 	${HOST}/api/tickets/$${LAST_ID}/add_thread.json
 
 add-email:
@@ -41,9 +43,21 @@ add-email:
 	"${HOST}/api/tickets.json" | jq -r '.tickets[0].id'); \
 	echo "Last ticket ID: $${LAST_ID}"; \
 	curl -v -H "X-API-Key: $(API_KEY)" $(XDEBUG_HEADER) -X POST \
-	-d '{"thread_type": "response", "as_client": true, "message": "When are you going to fix my problem", "staffId": 1, "alert": false}' \
+	-d '{"thread_type": "email",  "message": "When are you going to fix my problem"}' \
 	${HOST}/api/tickets/$${LAST_ID}/add_thread.json
 
 lookup:
 	curl -v -H "X-API-Key: $(API_KEY)" -X GET $(XDEBUG_HEADER) \
-	"${HOST}/api/tickets/number/$${TICKET}.json" | jq
+	"${HOST}/api/tickets/number/$${TICKET}.json" 
+
+list-staff:
+	curl -v -H "X-API-Key: $(API_KEY)" -X GET $(XDEBUG_HEADER) \
+	"${HOST}/api/staff.json"  | jq
+
+lookup-staff:
+	curl -v -H "X-API-Key: $(API_KEY)" -X GET $(XDEBUG_HEADER) \
+	"${HOST}/api/staff/email/${EMAIL}.json" | jq
+
+lookup-staffid:
+	curl -v -H "X-API-Key: $(API_KEY)" -X GET $(XDEBUG_HEADER) \
+	"${HOST}/api/staff/${STAFFID}.json" | jq

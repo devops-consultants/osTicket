@@ -49,4 +49,5 @@ Resources
 
 - [Tickets](api/tickets.md)
 - [Tasks](api/tasks.md)
-- [Thread API](api-thread.md)
+- [Thread API](api/ticket-threads.md)
+- [Staff/Agents](api/staff.md)
