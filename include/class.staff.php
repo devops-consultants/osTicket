@@ -1083,6 +1083,10 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
     static function create($vars=false) {
         $staff = new static($vars);
         $staff->created = SqlFunction::NOW();
+        // Set default values for new staff members
+        if (!isset($staff->isadmin)) {
+            $staff->isadmin = 0;
+        }
         return $staff;
     }
 
@@ -1260,7 +1264,11 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
           $errors['dept_id'] = sprintf(__('%s selected must be active'), __('Department'));
 
         // Ensure we will still have an administrator with access
-        if ($vars['isadmin'] !== '1' || $vars['islocked'] === '1') {
+        $isadmin_val = isset($vars['isadmin']) ? (!empty($vars['isadmin']) ? 1 : 0) : $this->isadmin;
+        $isactive_val = isset($vars['isactive']) ? (!empty($vars['isactive']) ? 1 : 0) : 
+                       (isset($vars['islocked']) ? (empty($vars['islocked']) ? 1 : 0) : $this->isactive);
+                       
+        if ($isadmin_val != 1 || $isactive_val != 1) {
             $sql = 'select count(*), max(staff_id) from '.STAFF_TABLE
                 .' WHERE isadmin=1 and isactive=1';
             if (($res = db_query($sql))
@@ -1276,15 +1284,25 @@ implements AuthenticatedUser, EmailContact, TemplateVariable, Searchable {
         // Update the local permissions
         $this->updatePerms($vars['perms'], $errors);
 
-        //checkboxes
-        $vars['isadmin'] = isset($vars['isadmin']) ? 1 : 0;
-        $vars['islocked'] = isset($vars['islocked']) ? 0 : 1;
-        $vars['isvisible'] = isset($vars['isvisible']) ? 1 : 0;
-        $vars['onvacation'] = isset($vars['onvacation']) ? 1 : 0;
-        $vars['assigned_only'] = isset($vars['assigned_only']) ? 1 : 0;
+        //checkboxes - handle boolean values properly
+        if (isset($vars['isadmin'])) {
+            $vars['isadmin'] = !empty($vars['isadmin']) ? 1 : 0;
+        }
+        $vars['isvisible'] = !empty($vars['isvisible']) ? 1 : 0;
+        $vars['onvacation'] = !empty($vars['onvacation']) ? 1 : 0;
+        $vars['assigned_only'] = !empty($vars['assigned_only']) ? 1 : 0;
+        
+        // Handle isactive directly if provided, otherwise derive from islocked
+        if (isset($vars['isactive'])) {
+            $vars['isactive'] = !empty($vars['isactive']) ? 1 : 0;
+        } elseif (isset($vars['islocked'])) {
+            // If islocked is provided but isactive is not, derive isactive from islocked
+            $vars['isactive'] = empty($vars['islocked']) ? 1 : 0;
+        }
+        // If neither isactive nor islocked is provided, keep current value or default
 
-        $this->isadmin = $vars['isadmin'];
-        $this->isactive = $vars['islocked'];
+        $this->isadmin = isset($vars['isadmin']) ? $vars['isadmin'] : $this->isadmin;
+        $this->isactive = isset($vars['isactive']) ? $vars['isactive'] : $this->isactive;
         $this->isvisible = $vars['isvisible'];
         $this->onvacation = $vars['onvacation'];
         $this->assigned_only = $vars['assigned_only'];

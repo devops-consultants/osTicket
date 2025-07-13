@@ -108,7 +108,7 @@ if ($avatar->isChangeable()) { ?>
           <td class="required"><?php echo __('Username'); ?>:
             <span class="error">*</span></td>
           <td>
-            <input type="text" size="40" style="width:300px"
+            <input type="text" size="50" maxlength="64" style="width:350px"
               class="staff-username typeahead"
               name="username" disabled value="<?php echo Format::htmlchars($staff->username); ?>" />
 <?php if (!$bk || $bk->supportsPasswordChange()) { ?>
